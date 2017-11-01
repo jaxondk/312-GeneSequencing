@@ -20,6 +20,10 @@ namespace GeneticsLab
             this.MaxCharactersToAlign = len;
         }
 
+        enum Previous
+        {
+            LEFT, ABOVE, DIAGONAL, ORIGIN
+        };
 
         /**
         This is the function you implement.
@@ -32,14 +36,18 @@ namespace GeneticsLab
         {
             ResultTable.Result result = new ResultTable.Result();
             int score;                                                       // place your computed alignment score here
-            string[] alignment = new string[2];                              // place your two computed alignments here
+            string[] alignment = new string[2];                             // place your two computed alignments here
 
+            int ALength = sequenceA.Sequence.Length;
+            int BLength = sequenceB.Sequence.Length;
+            //int[,] dp = new int[ALength, BLength];      //these sizes must be wrong. causes errors. Might have to do with "MaxCharactersToAlign" variable
+            //Previous[,] previous = new Previous[ALength, BLength];
 
-            // ********* these are placeholder assignments that you'll replace with your code  *******
             score = 0;                                                
             alignment[0] = "";
             alignment[1] = "";
-            // ***************************************************************************************
+
+            
             
 
             result.Update(score,alignment[0],alignment[1]);                  // bundling your results into the right object type 
