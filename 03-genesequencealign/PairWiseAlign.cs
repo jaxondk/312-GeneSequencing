@@ -20,9 +20,9 @@ namespace GeneticsLab
             this.MaxCharactersToAlign = len;
         }
 
-        enum Previous
+        enum Backpointer
         {
-            LEFT, ABOVE, DIAGONAL, ORIGIN
+            NULL, LEFT, UP, DIAGONAL, ORIGIN
         };
 
         /**
@@ -38,20 +38,70 @@ namespace GeneticsLab
             int score;                                                       // place your computed alignment score here
             string[] alignment = new string[2];                             // place your two computed alignments here
 
-            int ALength = sequenceA.Sequence.Length;
-            int BLength = sequenceB.Sequence.Length;
-            //int[,] dp = new int[ALength, BLength];      //these sizes must be wrong. causes errors. Might have to do with "MaxCharactersToAlign" variable
-            //Previous[,] previous = new Previous[ALength, BLength];
+            string[] sequence = new string[2];
+            sequence[0] = sequenceA.Sequence;
+            sequence[1] = sequenceB.Sequence;
+            int ALength = (sequenceA.Sequence.Length > MaxCharactersToAlign) ? MaxCharactersToAlign : sequenceA.Sequence.Length; 
+            int BLength = (sequenceB.Sequence.Length > MaxCharactersToAlign) ? MaxCharactersToAlign : sequenceB.Sequence.Length;
+            int[,] dp = new int[ALength+1, BLength+1]; //the +1 is for the '-' row and column in dp/Backpointer matrices
+            Backpointer[,] history = new Backpointer[ALength+1, BLength+1];
 
-            score = 0;                                                
-            alignment[0] = "";
-            alignment[1] = "";
-
-            
-            
-
+            score = solveCost(ALength, BLength, sequence, ref dp, ref history);
+            extractAlignments(ALength, BLength, ref history, ref alignment);
             result.Update(score,alignment[0],alignment[1]);                  // bundling your results into the right object type 
             return(result);
+        }
+
+        private int solveCost(int ALength, int BLength, string[] sequence, ref int[,] dp, ref Backpointer[,] history) //ref is needed to pass by reference
+        {
+            //Base Case: column 0 and row 0
+            dp[0, 0] = 0;
+            history[0, 0] = Backpointer.ORIGIN;
+            for (int i = 1; i <= ALength; i++)
+            {
+                dp[i, 0] = i * 5;
+                history[i, 0] = Backpointer.UP;
+            }
+            for (int j = 1; j <= BLength; j++)
+            {
+                dp[0, j] = j * 5;
+                history[0, j] = Backpointer.LEFT;
+            }
+
+            //Fill dp array. The bottom right cell is the optimal edit distance
+            for (int i = 1; i <= ALength; i++)
+            {
+                for (int j = 1; j <= BLength; j++)
+                {
+                    int upCost = 5 + dp[i - 1, j];
+                    int leftCost = 5 + dp[i, j - 1];
+                    int diagCost = (sequence[0][i - 1] == sequence[1][j - 1]) ? 
+                        (-3 + dp[i - 1, j - 1]) : (1 + dp[i - 1, j - 1]); //If the sequences match at this position, -3 + diag is cost. Else, 1 + diag is cost. 
+                                                                            //This is by Needleman-Wunscht study
+                    int min = diagCost;
+                    Backpointer prev = Backpointer.DIAGONAL;
+
+                    if(leftCost < min)
+                    {
+                        min = leftCost;
+                        prev = Backpointer.LEFT;
+                    }
+                    if (upCost < min)
+                    {
+                        min = upCost;
+                        prev = Backpointer.UP;
+                    }
+                    dp[i, j] = min;
+                    history[i, j] = prev;
+                }
+            }
+            return dp[ALength, BLength];
+        }
+
+        private void extractAlignments(int Alength, int BLength, ref Backpointer[,] previous, ref string[] alignment)
+        {
+            alignment[0] = "";
+            alignment[1] = "";
         }
     }
 }
