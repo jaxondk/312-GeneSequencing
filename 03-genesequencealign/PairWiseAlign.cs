@@ -43,8 +43,13 @@ namespace GeneticsLab
             sequence[1] = sequenceB.Sequence;
             int ALength = (sequenceA.Sequence.Length > MaxCharactersToAlign) ? MaxCharactersToAlign : sequenceA.Sequence.Length; 
             int BLength = (sequenceB.Sequence.Length > MaxCharactersToAlign) ? MaxCharactersToAlign : sequenceB.Sequence.Length;
-            int[,] dp = new int[ALength+1, BLength+1]; //the +1 is for the '-' row and column in dp/Backpointer matrices
-            Backpointer[,] history = new Backpointer[ALength+1, BLength+1];
+            int[][] dp = new int[ALength + 1][];//the +1 is for the '-' row and column in dp/Backpointer matrices
+            Backpointer[][] history = new Backpointer[ALength + 1][];
+            for (int i = 0; i <= ALength; i++) //I use jagged arrays for speed up purposes only; this is not a jagged matrix
+            {
+                dp[i] = new int[BLength + 1];
+                history[i] = new Backpointer[BLength + 1];
+            }
 
             score = solveCost(ALength, BLength, sequence, banded, ref dp, ref history);
             extractAlignments(ALength, BLength, ref history, ref alignment);
@@ -53,38 +58,41 @@ namespace GeneticsLab
         }
 
         private int solveCost(int ALength, int BLength, string[] sequence, bool banded,
-            ref int[,] dp, ref Backpointer[,] history) //ref is needed to pass by reference
+            ref int[][] dp, ref Backpointer[][] history) //ref is needed to pass by reference
         {
             //Base Case: column 0 and row 0
-            dp[0, 0] = 0;
-            history[0, 0] = Backpointer.ORIGIN;
+            dp[0][0] = 0;
+            history[0][0] = Backpointer.ORIGIN;
             for (int i = 1; i <= ALength; i++)
             {
-                dp[i, 0] = i * 5;
-                history[i, 0] = Backpointer.UP;
+                dp[i][0] = i * 5;
+                history[i][0] = Backpointer.UP;
             }
             for (int j = 1; j <= BLength; j++)
             {
-                dp[0, j] = j * 5;
-                history[0, j] = Backpointer.LEFT;
+                dp[0][j] = j * 5;
+                history[0][j] = Backpointer.LEFT;
             }
 
             //Fill dp array. The bottom right cell is the optimal edit distance
             for (int i = 1; i <= ALength; i++)
             {
+                int[] currRow = dp[i]; //not sure why, but this results in a drastic speed-up.
+                int[] upRow = dp[i - 1];
+                Backpointer[] currRowHist = history[i];
                 for (int j = 1; j <= BLength; j++)
                 {
                     int bandDist = Math.Abs(i - j);
                     if(banded && bandDist > 3)
                     {
-                        dp[i, j] = int.MaxValue - 5; //5 is the most that will be added to this, and we don't want overflow
+                        currRow[j] = int.MaxValue - 5; //5 is the most that will be added to this, and we don't want overflow
                         //history doesn't need to be set since it's initialized to NULL
                         continue;
                     }
-                    int upCost = 5 + dp[i - 1, j];
-                    int leftCost = 5 + dp[i, j - 1];
+                    int upCost = 5 + upRow[j];
+                    int leftCost = 5 + currRow[j - 1];
                     int diagCost = (sequence[0][i - 1] == sequence[1][j - 1]) ? 
-                        (-3 + dp[i - 1, j - 1]) : (1 + dp[i - 1, j - 1]); //If the sequences match at this position, -3 + diag is cost. Else, 1 + diag is cost. 
+                        (-3 + upRow[j - 1]) : (1 + upRow[j - 1]); //If the sequences match at this position, -3 + diag is cost. Else, 1 + diag is cost. 
                                                                             //This is by Needleman-Wunscht study
                     int min = diagCost;
                     Backpointer prev = Backpointer.DIAGONAL;
@@ -99,14 +107,14 @@ namespace GeneticsLab
                         min = upCost;
                         prev = Backpointer.UP;
                     }
-                    dp[i, j] = min;
-                    history[i, j] = prev;
+                    currRow[j] = min;
+                    currRowHist[j] = prev;
                 }
             }
-            return dp[ALength, BLength];
+            return dp[ALength][BLength];
         }
 
-        private void extractAlignments(int Alength, int BLength, ref Backpointer[,] previous, ref string[] alignment)
+        private void extractAlignments(int Alength, int BLength, ref Backpointer[][] previous, ref string[] alignment)
         {
             alignment[0] = "";
             alignment[1] = "";
