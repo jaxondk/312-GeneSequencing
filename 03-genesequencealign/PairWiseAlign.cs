@@ -46,13 +46,14 @@ namespace GeneticsLab
             int[,] dp = new int[ALength+1, BLength+1]; //the +1 is for the '-' row and column in dp/Backpointer matrices
             Backpointer[,] history = new Backpointer[ALength+1, BLength+1];
 
-            score = solveCost(ALength, BLength, sequence, ref dp, ref history);
+            score = solveCost(ALength, BLength, sequence, banded, ref dp, ref history);
             extractAlignments(ALength, BLength, ref history, ref alignment);
             result.Update(score,alignment[0],alignment[1]);                  // bundling your results into the right object type 
             return(result);
         }
 
-        private int solveCost(int ALength, int BLength, string[] sequence, ref int[,] dp, ref Backpointer[,] history) //ref is needed to pass by reference
+        private int solveCost(int ALength, int BLength, string[] sequence, bool banded,
+            ref int[,] dp, ref Backpointer[,] history) //ref is needed to pass by reference
         {
             //Base Case: column 0 and row 0
             dp[0, 0] = 0;
@@ -73,6 +74,13 @@ namespace GeneticsLab
             {
                 for (int j = 1; j <= BLength; j++)
                 {
+                    int bandDist = Math.Abs(i - j);
+                    if(banded && bandDist > 3)
+                    {
+                        dp[i, j] = int.MaxValue - 5; //5 is the most that will be added to this, and we don't want overflow
+                        //history doesn't need to be set since it's initialized to NULL
+                        continue;
+                    }
                     int upCost = 5 + dp[i - 1, j];
                     int leftCost = 5 + dp[i, j - 1];
                     int diagCost = (sequence[0][i - 1] == sequence[1][j - 1]) ? 
