@@ -47,16 +47,68 @@ namespace GeneticsLab
             //Space: O(nm)
             int[,] dp = new int[ALength+1, BLength+1]; //the +1 is for the '-' row and column in dp/Backpointer matrices
             Backpointer[,] history = new Backpointer[ALength+1, BLength+1];
-
-            score = solveCost(ALength, BLength, sequence, banded, ref dp, ref history);
+            if(banded)
+                score = solveCostBanded(ALength, BLength, sequence, ref dp, ref history);
+            else
+                score = solveCost(ALength, BLength, sequence, ref dp, ref history);
             extractAlignments(ALength, BLength, sequence, ref history, ref alignment);
             result.Update(score,alignment[0],alignment[1]);                  // bundling your results into the right object type 
             return(result);
         }
 
+        private int solveCostBanded(int ALength, int BLength, string[] sequence, ref int[,] dp, ref Backpointer[,] history)
+        {
+            int bandDist = 3;
+            //Base Case: column 0 down 4 and row 0 across 5
+            //O(1) for populating the base case
+            dp[0, 0] = 0;
+            history[0, 0] = Backpointer.ORIGIN;
+            for (int i = 1; i <= bandDist; i++)
+            {
+                dp[i, 0] = i * 5;
+                history[i, 0] = Backpointer.UP;
+            }
+            for (int j = 1; j <= bandDist; j++)
+            {
+                dp[0, j] = j * 5;
+                history[0, j] = Backpointer.LEFT;
+            }
+
+            //Fill only the banded portion of the dp array. The bottom right cell is the optimal edit distance
+            //O(n+m) 
+            for (int i = 1; i <= ALength; i++)
+            {
+                int j = (i > bandDist) ? i - bandDist : 1;
+                int distFromDiag = j - i;
+                for (; Math.Abs(distFromDiag) <= bandDist && j <= BLength; j++, distFromDiag = j - i)
+                {
+                    int upCost = 5 + dp[i - 1, j];
+                    int leftCost = 5 + dp[i, j - 1];
+                    int diagCost = (sequence[0][i - 1] == sequence[1][j - 1]) ?
+                        (-3 + dp[i - 1, j - 1]) : (1 + dp[i - 1, j - 1]); //If the sequences match at this position, -3 + diag is cost. Else, 1 + diag is cost. 
+                                                                          //This is by Needleman-Wunscht study
+                    int min = diagCost;
+                    Backpointer prev = Backpointer.DIAGONAL;
+
+                    if (distFromDiag != -(bandDist) && leftCost < min) //if you are -3 from the diag, the left box shouldn't be considered
+                    {
+                        min = leftCost;
+                        prev = Backpointer.LEFT;
+                    }
+                    if (distFromDiag != bandDist && upCost < min) //if you are 3 from the diag, the up box shouldn't be considered
+                    {
+                        min = upCost;
+                        prev = Backpointer.UP;
+                    }
+                    dp[i, j] = min;
+                    history[i, j] = prev;
+                }
+            }
+            return (history[ALength, BLength] == Backpointer.NULL) ? int.MaxValue : dp[ALength, BLength];
+        }
+
         //Unrestricted: O(nm) | Banded: O(n+m)
-        private int solveCost(int ALength, int BLength, string[] sequence, bool banded,
-            ref int[,] dp, ref Backpointer[,] history) //ref is needed to pass by reference
+        private int solveCost(int ALength, int BLength, string[] sequence, ref int[,] dp, ref Backpointer[,] history) //ref is needed to pass by reference
         {
             //Base Case: column 0 and row 0
             //O(n+m) for populating the base case
@@ -79,13 +131,6 @@ namespace GeneticsLab
             {
                 for (int j = 1; j <= BLength; j++)
                 {
-                    int bandDist = Math.Abs(i - j);
-                    if(banded && bandDist > 3)
-                    {
-                        dp[i, j] = int.MaxValue - 5; //5 is the most that will be added to this, and we don't want overflow
-                        //history doesn't need to be set since it's initialized to NULL
-                        continue;
-                    }
                     int upCost = 5 + dp[i - 1, j];
                     int leftCost = 5 + dp[i, j - 1];
                     int diagCost = (sequence[0][i - 1] == sequence[1][j - 1]) ? 
