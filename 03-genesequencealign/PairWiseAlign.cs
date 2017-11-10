@@ -37,14 +37,14 @@ namespace GeneticsLab
             ResultTable.Result result = new ResultTable.Result();
             int score;                                                       // place your computed alignment score here
             string[] alignment = new string[2];                             // place your two computed alignments here
-            alignment[0] = "";
-            alignment[1] = "";
 
             string[] sequence = new string[2];
             sequence[0] = sequenceA.Sequence;
             sequence[1] = sequenceB.Sequence;
             int ALength = (sequenceA.Sequence.Length > MaxCharactersToAlign) ? MaxCharactersToAlign : sequenceA.Sequence.Length; 
             int BLength = (sequenceB.Sequence.Length > MaxCharactersToAlign) ? MaxCharactersToAlign : sequenceB.Sequence.Length;
+
+            //Space: O(nm)
             int[,] dp = new int[ALength+1, BLength+1]; //the +1 is for the '-' row and column in dp/Backpointer matrices
             Backpointer[,] history = new Backpointer[ALength+1, BLength+1];
 
@@ -54,10 +54,12 @@ namespace GeneticsLab
             return(result);
         }
 
+        //Unrestricted: O(nm) | Banded: O(n+m)
         private int solveCost(int ALength, int BLength, string[] sequence, bool banded,
             ref int[,] dp, ref Backpointer[,] history) //ref is needed to pass by reference
         {
             //Base Case: column 0 and row 0
+            //O(n+m) for populating the base case
             dp[0, 0] = 0;
             history[0, 0] = Backpointer.ORIGIN;
             for (int i = 1; i <= ALength; i++)
@@ -72,6 +74,7 @@ namespace GeneticsLab
             }
 
             //Fill dp array. The bottom right cell is the optimal edit distance
+            //Unrestricted: O(nm) | Banded: O(n+m) since
             for (int i = 1; i <= ALength; i++)
             {
                 for (int j = 1; j <= BLength; j++)
@@ -108,6 +111,8 @@ namespace GeneticsLab
             return dp[ALength, BLength];
         }
 
+        //O(n+m) - this is essentially taxi cab distance. You can go left at most m times and up at most n times
+        //          and the work for each case is constant time
         private void extractAlignments(int ALength, int BLength, string[] sequence, ref Backpointer[,] history, ref string[] alignment)
         {
             int i = ALength;
@@ -128,7 +133,7 @@ namespace GeneticsLab
                     case Backpointer.UP:
                         i -= 1;
                         align1.Insert(0, '-');
-                        align0.Insert(0, sequence[0][i]); //since i decremented i, this is the correct character in sequence[0] to insert
+                        align0.Insert(0, sequence[0][i]); //since I decremented i, this is the correct character in sequence[0] to insert
                         break;
                     case Backpointer.LEFT:
                         j -= 1;
