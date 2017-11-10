@@ -37,6 +37,8 @@ namespace GeneticsLab
             ResultTable.Result result = new ResultTable.Result();
             int score;                                                       // place your computed alignment score here
             string[] alignment = new string[2];                             // place your two computed alignments here
+            alignment[0] = "";
+            alignment[1] = "";
 
             string[] sequence = new string[2];
             sequence[0] = sequenceA.Sequence;
@@ -47,7 +49,7 @@ namespace GeneticsLab
             Backpointer[,] history = new Backpointer[ALength+1, BLength+1];
 
             score = solveCost(ALength, BLength, sequence, banded, ref dp, ref history);
-            extractAlignments(ALength, BLength, ref history, ref alignment);
+            extractAlignments(ALength, BLength, sequence, ref history, ref alignment);
             result.Update(score,alignment[0],alignment[1]);                  // bundling your results into the right object type 
             return(result);
         }
@@ -106,10 +108,44 @@ namespace GeneticsLab
             return dp[ALength, BLength];
         }
 
-        private void extractAlignments(int Alength, int BLength, ref Backpointer[,] previous, ref string[] alignment)
+        private void extractAlignments(int ALength, int BLength, string[] sequence, ref Backpointer[,] history, ref string[] alignment)
         {
-            alignment[0] = "";
-            alignment[1] = "";
+            int i = ALength;
+            int j = BLength;
+            Backpointer prev = history[i, j];
+            if (prev == Backpointer.NULL)
+            {
+                alignment[0] = alignment[1] = "No Alignment Possible";
+                return;
+            }
+
+            StringBuilder align0 = new StringBuilder(ALength);
+            StringBuilder align1 = new StringBuilder(BLength);
+            while (prev != Backpointer.ORIGIN)
+            {
+                switch(prev)
+                {
+                    case Backpointer.UP:
+                        i -= 1;
+                        align1.Insert(0, '-');
+                        align0.Insert(0, sequence[0][i]); //since i decremented i, this is the correct character in sequence[0] to insert
+                        break;
+                    case Backpointer.LEFT:
+                        j -= 1;
+                        align0.Insert(0, '-');
+                        align1.Insert(0, sequence[1][j]);
+                        break;
+                    case Backpointer.DIAGONAL:
+                        i -= 1;
+                        j -= 1;
+                        align0.Insert(0, sequence[0][i]);
+                        align1.Insert(0, sequence[1][j]);
+                        break;
+                }
+                prev = history[i, j];
+            }
+            alignment[0] = align0.ToString();
+            alignment[1] = align1.ToString();
         }
     }
 }
